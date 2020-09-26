@@ -26,6 +26,9 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
 
     private enum Connected { False, Pending, True }
@@ -148,6 +151,12 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
                 dialog.dismiss();
             });
             builder.create().show();
+            return true;
+        } else if (id ==R.id.sendCurrentTime) {
+            Calendar cl = Calendar.getInstance();
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+            send(String.format("sudo date -s \"%s\"", sdf.format(cl.getTime())));
             return true;
         } else {
             return super.onOptionsItemSelected(item);
