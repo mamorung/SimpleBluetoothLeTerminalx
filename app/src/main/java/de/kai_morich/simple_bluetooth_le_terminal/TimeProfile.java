@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.androidthings.gattserver;
+package de.kai_morich.simple_bluetooth_le_terminal;
 
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
