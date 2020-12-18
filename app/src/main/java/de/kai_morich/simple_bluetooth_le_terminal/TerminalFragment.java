@@ -4,19 +4,23 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattServerCallback;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -26,10 +30,18 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
+import static android.content.Context.BLUETOOTH_SERVICE;
+
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
+
+    private static final String TAG = TerminalFragment.class.getSimpleName();
 
     private enum Connected { False, Pending, True }
 
@@ -42,6 +54,11 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
     private boolean initialStart = true;
     private Connected connected = Connected.False;
 
+    /* Gatt Server: BEGIN */
+    private BluetoothManager mBluetoothManager;
+    private BluetoothGattServer mBluetoothGattServer;
+    /* Gatt Server: END */
+
     /*
      * Lifecycle
      */
@@ -51,7 +68,68 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         setHasOptionsMenu(true);
         setRetainInstance(true);
         deviceAddress = getArguments().getString("device");
+
+        /* Gatt Server: BEGIN */
+        mBluetoothManager = (BluetoothManager) getActivity().getSystemService(BLUETOOTH_SERVICE);
+        startServer();
+        /* Gatt Server: END */
     }
+
+    /* Gatt Server: BEGIN */
+    private void startServer() {
+        mBluetoothGattServer = mBluetoothManager.openGattServer(getContext(), mGattServerCallback);
+        if (mBluetoothGattServer == null) {
+            Log.w(TAG, "Unable to create GATT server");
+            return;
+        }
+        mBluetoothGattServer.addService(TimeProfile.createTimeService());
+    }
+    private void stopServer() {
+        if (mBluetoothGattServer == null) return;
+
+        mBluetoothGattServer.close();
+    }
+    private BluetoothGattServerCallback mGattServerCallback = new BluetoothGattServerCallback() {
+
+        @Override
+        public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.i(TAG, "BluetoothDevice CONNECTED: " + device);
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.i(TAG, "BluetoothDevice DISCONNECTED: " + device);
+            }
+        }
+
+        @Override
+        public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
+                                                BluetoothGattCharacteristic characteristic) {
+            long now = System.currentTimeMillis();
+            if (TimeProfile.CURRENT_TIME.equals(characteristic.getUuid())) {
+                Log.i(TAG, "Read CurrentTime");
+                mBluetoothGattServer.sendResponse(device,
+                        requestId,
+                        BluetoothGatt.GATT_SUCCESS,
+                        0,
+                        TimeProfile.getExactTime(now, TimeProfile.ADJUST_NONE));
+            } else if (TimeProfile.LOCAL_TIME_INFO.equals(characteristic.getUuid())) {
+                Log.i(TAG, "Read LocalTimeInfo");
+                mBluetoothGattServer.sendResponse(device,
+                        requestId,
+                        BluetoothGatt.GATT_SUCCESS,
+                        0,
+                        TimeProfile.getLocalTimeInfo(now));
+            } else {
+                // Invalid characteristic
+                Log.w(TAG, "Invalid Characteristic Read: " + characteristic.getUuid());
+                mBluetoothGattServer.sendResponse(device,
+                        requestId,
+                        BluetoothGatt.GATT_FAILURE,
+                        0,
+                        null);
+            }
+        }
+    };
+    /* Gatt Server: END */
 
     @Override
     public void onDestroy() {
@@ -59,6 +137,10 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             disconnect();
         getActivity().stopService(new Intent(getActivity(), SerialService.class));
         super.onDestroy();
+
+        /* Gatt Server: BEGIN */
+        stopServer();
+        /* Gatt Server: END */
     }
 
     @Override
