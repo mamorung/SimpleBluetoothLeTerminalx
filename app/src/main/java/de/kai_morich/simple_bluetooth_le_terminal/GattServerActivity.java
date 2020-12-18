@@ -26,9 +26,6 @@ import android.bluetooth.BluetoothGattServer;
 import android.bluetooth.BluetoothGattServerCallback;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
-import android.bluetooth.le.AdvertiseCallback;
-import android.bluetooth.le.AdvertiseData;
-import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -36,24 +33,18 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.ParcelUuid;
-import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.WindowManager;
-import android.widget.TextView;
 
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
-
-import de.kai_morich.simple_bluetooth_le_terminal.R;
 
 public class GattServerActivity extends Activity {
     private static final String TAG = GattServerActivity.class.getSimpleName();
 
     /* Local UI */
-    private TextView mLocalTimeView;
+//    private TextView mLocalTimeView;
     /* Bluetooth API */
     private BluetoothManager mBluetoothManager;
     private BluetoothGattServer mBluetoothGattServer;
@@ -66,7 +57,7 @@ public class GattServerActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_server);
 
-        mLocalTimeView = (TextView) findViewById(R.id.text_time);
+//        mLocalTimeView = (TextView) findViewById(R.id.text_time);
 
         // Devices with a display should not go to sleep
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -86,7 +77,7 @@ public class GattServerActivity extends Activity {
             bluetoothAdapter.enable();
         } else {
             Log.d(TAG, "Bluetooth enabled...starting services");
-            startAdvertising();
+//            startAdvertising();
             startServer();
         }
     }
@@ -115,7 +106,7 @@ public class GattServerActivity extends Activity {
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
         if (bluetoothAdapter.isEnabled()) {
             stopServer();
-            stopAdvertising();
+//            stopAdvertising();
         }
 
         unregisterReceiver(mBluetoothReceiver);
@@ -163,7 +154,7 @@ public class GattServerActivity extends Activity {
             }
             long now = System.currentTimeMillis();
             notifyRegisteredDevices(now, adjustReason);
-            updateLocalUi(now);
+//            updateLocalUi(now);
         }
     };
 
@@ -178,12 +169,12 @@ public class GattServerActivity extends Activity {
 
             switch (state) {
                 case BluetoothAdapter.STATE_ON:
-                    startAdvertising();
+//                    startAdvertising();
                     startServer();
                     break;
                 case BluetoothAdapter.STATE_OFF:
                     stopServer();
-                    stopAdvertising();
+//                    stopAdvertising();
                     break;
                 default:
                     // Do nothing
@@ -196,39 +187,39 @@ public class GattServerActivity extends Activity {
      * Begin advertising over Bluetooth that this device is connectable
      * and supports the Current Time Service.
      */
-    private void startAdvertising() {
-        BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
-        mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-        if (mBluetoothLeAdvertiser == null) {
-            Log.w(TAG, "Failed to create advertiser");
-            return;
-        }
-
-        AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
-                .setConnectable(true)
-                .setTimeout(0)
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
-                .build();
-
-        AdvertiseData data = new AdvertiseData.Builder()
-                .setIncludeDeviceName(true)
-                .setIncludeTxPowerLevel(false)
-                .addServiceUuid(new ParcelUuid(TimeProfile.TIME_SERVICE))
-                .build();
-
-        mBluetoothLeAdvertiser
-                .startAdvertising(settings, data, mAdvertiseCallback);
-    }
+//    private void startAdvertising() {
+//        BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
+//        mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
+//        if (mBluetoothLeAdvertiser == null) {
+//            Log.w(TAG, "Failed to create advertiser");
+//            return;
+//        }
+//
+//        AdvertiseSettings settings = new AdvertiseSettings.Builder()
+//                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
+//                .setConnectable(true)
+//                .setTimeout(0)
+//                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
+//                .build();
+//
+//        AdvertiseData data = new AdvertiseData.Builder()
+//                .setIncludeDeviceName(true)
+//                .setIncludeTxPowerLevel(false)
+//                .addServiceUuid(new ParcelUuid(TimeProfile.TIME_SERVICE))
+//                .build();
+//
+//        mBluetoothLeAdvertiser
+//                .startAdvertising(settings, data, mAdvertiseCallback);
+//    }
 
     /**
      * Stop Bluetooth advertisements.
      */
-    private void stopAdvertising() {
-        if (mBluetoothLeAdvertiser == null) return;
-
-        mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
-    }
+//    private void stopAdvertising() {
+//        if (mBluetoothLeAdvertiser == null) return;
+//
+//        mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
+//    }
 
     /**
      * Initialize the GATT server instance with the services/characteristics
@@ -244,7 +235,7 @@ public class GattServerActivity extends Activity {
         mBluetoothGattServer.addService(TimeProfile.createTimeService());
 
         // Initialize the local UI
-        updateLocalUi(System.currentTimeMillis());
+//        updateLocalUi(System.currentTimeMillis());
     }
 
     /**
@@ -259,17 +250,17 @@ public class GattServerActivity extends Activity {
     /**
      * Callback to receive information about the advertisement process.
      */
-    private AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
-        @Override
-        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-            Log.i(TAG, "LE Advertise Started.");
-        }
-
-        @Override
-        public void onStartFailure(int errorCode) {
-            Log.w(TAG, "LE Advertise Failed: "+errorCode);
-        }
-    };
+//    private AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
+//        @Override
+//        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+//            Log.i(TAG, "LE Advertise Started.");
+//        }
+//
+//        @Override
+//        public void onStartFailure(int errorCode) {
+//            Log.w(TAG, "LE Advertise Failed: "+errorCode);
+//        }
+//    };
 
     /**
      * Send a time service notification to any devices that are subscribed
@@ -295,13 +286,13 @@ public class GattServerActivity extends Activity {
     /**
      * Update graphical UI on devices that support it with the current time.
      */
-    private void updateLocalUi(long timestamp) {
-        Date date = new Date(timestamp);
-        String displayDate = DateFormat.getMediumDateFormat(this).format(date)
-                + "\n"
-                + DateFormat.getTimeFormat(this).format(date);
-        mLocalTimeView.setText(displayDate);
-    }
+//    private void updateLocalUi(long timestamp) {
+//        Date date = new Date(timestamp);
+//        String displayDate = DateFormat.getMediumDateFormat(this).format(date)
+//                + "\n"
+//                + DateFormat.getTimeFormat(this).format(date);
+//        mLocalTimeView.setText(displayDate);
+//    }
 
     /**
      * Callback to handle incoming requests to the GATT server.
