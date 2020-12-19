@@ -36,8 +36,11 @@ import androidx.fragment.app.Fragment;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
+import static java.lang.Integer.parseInt;
 
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
 
@@ -282,8 +285,51 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         }
     }
 
+    final private Pattern pattern = Pattern.compile("\033\\[(\\d+)C");
+    private String lastPartialEscapeString = "";
+    private String spaces(int n) {
+        String s = "";
+        for (int i = 0; i < n; i++)
+            s = s + " ";
+        return s;
+    }
+    private String unEscapeString(byte[] data) {
+        String s = lastPartialEscapeString + new String(data);
+        lastPartialEscapeString = "";
+
+        // delete some typical escape sequences
+        s = s.replaceAll("\033\\[\\d+;\\d+[mH]", "");
+        s = s.replaceAll("\033\\[\\d+[ABD]", "");
+
+        // exapnd "ESC [ n C" to spaces
+        String left, digits, right;
+        right = s;
+        s = "";
+        Matcher matcher = pattern.matcher(right);
+        while (matcher.find()) {
+            left = right.substring(0, matcher.start(0));
+            digits = right.substring(matcher.start(1), matcher.end(1));
+            s = s + left + spaces(parseInt(digits));
+
+            right = right.substring(matcher.end(0));
+            matcher = pattern.matcher(right);
+        }
+        s = s + right;
+
+        // handle middle of escape sequence.
+        int index;
+        String t;
+        index = s.indexOf("\033");
+        if (index >= 0) {
+            t = s.substring(0, index);
+            lastPartialEscapeString = s.substring(index);
+        } else {
+            t = s;
+        }
+        return t;
+    }
     private void receive(byte[] data) {
-        receiveText.append(new String(data));
+        receiveText.append(unEscapeString(data));
     }
 
     private void status(String str) {
