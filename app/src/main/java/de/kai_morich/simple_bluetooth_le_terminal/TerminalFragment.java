@@ -299,9 +299,12 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         String s = lastPartialEscapeString + new String(data);
         lastPartialEscapeString = "";
 
+        Log.w(TAG, "s[in] = " + s);
+
         // delete some typical escape sequences
         s = s.replaceAll("\033\\[\\d+;\\d+[mH]", "");
         s = s.replaceAll("\033\\[\\d+[ABD]", "");
+        s = s.replaceAll("\033\\[m", "");
 
         // exapnd "ESC [ n C" to spaces
         String left, digits, right;
@@ -328,9 +331,13 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         } else {
             t = s;
         }
+        Log.w(TAG, "t[out] = " + t);
+        Log.w(TAG, "last = " + lastPartialEscapeString);
+
         return t;
     }
     private void receive(byte[] data) {
+//        receiveText.append(new String(data));
         receiveText.append(unEscapeString(data));
     }
 
