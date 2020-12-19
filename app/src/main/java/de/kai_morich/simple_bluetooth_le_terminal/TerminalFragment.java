@@ -14,6 +14,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.Spannable;
@@ -34,8 +35,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -207,6 +206,8 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         View view = inflater.inflate(R.layout.fragment_terminal, container, false);
         receiveText = view.findViewById(R.id.receive_text);                          // TextView performance decreases with number of spans
         receiveText.setTextColor(getResources().getColor(R.color.colorRecieveText)); // set as default color to reduce number of spans
+        receiveText.setTypeface(Typeface.MONOSPACE);
+        receiveText.setTextSize(16.0f);
         receiveText.setMovementMethod(ScrollingMovementMethod.getInstance());
         TextView sendText = view.findViewById(R.id.send_text);
         View sendBtn = view.findViewById(R.id.send_btn);
@@ -238,10 +239,11 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             builder.create().show();
             return true;
         } else if (id ==R.id.sendCurrentTime) {
-            Calendar cl = Calendar.getInstance();
-
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-            send(String.format("sudo date -s \"%s\"", sdf.format(cl.getTime())));
+//            Calendar cl = Calendar.getInstance();
+//
+//            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+//            send(String.format("sudo date -s \"%s\"", sdf.format(cl.getTime())));
+            send("\t");
             return true;
         } else {
             return super.onOptionsItemSelected(item);
