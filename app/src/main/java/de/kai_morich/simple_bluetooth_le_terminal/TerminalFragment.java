@@ -35,11 +35,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
-import static java.lang.Integer.parseInt;
 
 public class TerminalFragment extends Fragment implements ServiceConnection, SerialListener {
 
@@ -239,11 +238,10 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
             builder.create().show();
             return true;
         } else if (id ==R.id.sendCurrentTime) {
-//            Calendar cl = Calendar.getInstance();
-//
-//            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-//            send(String.format("sudo date -s \"%s\"", sdf.format(cl.getTime())));
-            send("\t");
+            Calendar cl = Calendar.getInstance();
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+            send(String.format("sudo date -s \"%s\"", sdf.format(cl.getTime())));
             return true;
         } else {
             return super.onOptionsItemSelected(item);
@@ -287,58 +285,150 @@ public class TerminalFragment extends Fragment implements ServiceConnection, Ser
         }
     }
 
-    final private Pattern pattern = Pattern.compile("\033\\[(\\d+)C");
-    private String lastPartialEscapeString = "";
     private String spaces(int n) {
         String s = "";
         for (int i = 0; i < n; i++)
             s = s + " ";
         return s;
     }
-    private String unEscapeString(byte[] data) {
-        String s = lastPartialEscapeString + new String(data);
-        lastPartialEscapeString = "";
 
-        Log.w(TAG, "s[in] = " + s);
+    //
+    // ANSI escape sequence analyzer
+    // Handling below subset is enough for nRF52840 sdk17's cli module:
+    /*
+    ESC [ J
+    ESC 7
+    ESC 8
+    ESC [ 1 ; 3_ m
+    ESC [ m
+    ESC [ 4_ m
+    ESC [ K
+    ESC [ H
+    ESC [ 2 J
+    ESC [ ? 3 l
+    ESC [ 6 n
+    ESC [ _ A
+    ESC [ _ B
+    ESC [ _ C
+    ESC [ _ D
+    */
 
-        // delete some typical escape sequences
-        s = s.replaceAll("\033\\[\\d+;\\d+[mH]", "");
-        s = s.replaceAll("\033\\[\\d+[ABD]", "");
-        s = s.replaceAll("\033\\[m", "");
+    //
+    private int lex_state = 0;
+    private int escArg = 0;
+    private void lexical_analize(String s){
 
-        // exapnd "ESC [ n C" to spaces
-        String left, digits, right;
-        right = s;
-        s = "";
-        Matcher matcher = pattern.matcher(right);
-        while (matcher.find()) {
-            left = right.substring(0, matcher.start(0));
-            digits = right.substring(matcher.start(1), matcher.end(1));
-            s = s + left + spaces(parseInt(digits));
-
-            right = right.substring(matcher.end(0));
-            matcher = pattern.matcher(right);
-        }
-        s = s + right;
-
-        // handle middle of escape sequence.
-        int index;
+        char c;
         String t;
-        index = s.indexOf("\033");
-        if (index >= 0) {
-            t = s.substring(0, index);
-            lastPartialEscapeString = s.substring(index);
-        } else {
-            t = s;
+        for (int i = 0; i < s.length(); i++) {
+            c = s.charAt(i);
+            t = s.substring(i, i + 1);
+            switch (lex_state) {
+                case 0:
+                    switch (c) {
+                        case '\033':
+                            lex_state = 1;
+                            break;
+                        default:
+                            receiveText.append(t);
+                            break;
+                    }
+                    break;
+                case 1:
+                    switch (c) {
+                        case '[':
+                            lex_state = 2;
+                            escArg = 0;
+                            break;
+                        case '7':
+                        case '8':
+                            lex_state = 0;
+                            break;
+                        default:
+                            lex_state = 0;
+                            break;
+                    }
+                    break;
+                case 2:
+                    if (c >= '0' && c <= '9') {
+                        escArg *= 10;
+                        escArg += c - '0';
+                    } else {
+                        switch (c) {
+                            case 'A':
+                            case 'B':
+                                lex_state = 0;
+                                break;
+                            case 'C':
+                                if (escArg == 0)
+                                    escArg = 1;
+                                receiveText.append(spaces(escArg));
+                                lex_state = 0;
+                                break;
+                            case 'D':
+                                if (escArg == 0)
+                                    escArg = 1;
+                                receiveText.setText(receiveText.getText().toString().substring(0, receiveText.getText().length() - escArg));
+                                lex_state = 0;
+                                break;
+                            case ';':
+                                lex_state = 3;
+                                escArg = 0;
+                                break;
+                            case 'H':
+                            case 'J':
+                            case 'K':
+                            case 'm':
+                            case 'n':
+                                lex_state = 0;
+                                break;
+                            case '?':
+                                lex_state = 4;
+                                break;
+                            default:
+                                lex_state = 0;
+                                break;
+                        }
+                    }
+                    break;
+                case 3:
+                    if (c >= '0' && c <= '9') {
+                        escArg *= 10;
+                        escArg += c - '0';
+                        lex_state = 2;
+                    } else {
+                        lex_state = 0;
+                    }
+                    break;
+                case 4:
+                    switch (c) {
+                        case '3':
+                            lex_state = 5;
+                            break;
+                        default:
+                            lex_state = 0;
+                            break;
+                    }
+                    break;
+                case 5:
+                    switch (c) {
+                        case 'l':
+                            lex_state = 0;
+                            break;
+                        default:
+                            lex_state = 0;
+                            break;
+                    }
+                    break;
+                default:
+                    lex_state = 0;
+                    break;
+            }
         }
-        Log.w(TAG, "t[out] = " + t);
-        Log.w(TAG, "last = " + lastPartialEscapeString);
-
-        return t;
     }
+
     private void receive(byte[] data) {
-//        receiveText.append(new String(data));
-        receiveText.append(unEscapeString(data));
+        lexical_analize(new String(data));
     }
 
     private void status(String str) {
